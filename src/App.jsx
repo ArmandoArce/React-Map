@@ -1,15 +1,31 @@
 import { useState, useEffect } from 'react';
 import Map from './components/Map';
 import { getUserLocation } from './services/geolocation';
+import useLocalStorage from './hooks/useLocalStorage';
+import useForm from './hooks/useForm';
+import validate from './hooks/validate';
 
 function App() {
     const [locations, setLocations] = useState([]);
     const [userLocation, setUserLocation] = useState(null);
-    const [newLocation, setNewLocation] = useState({
-        name: '',
-        latitude: '',
-        longitude: '',
-    });
+    const [title, setTitle] = useState('Location Map');
+    const [savedLocation, setSavedLocation] = useLocalStorage('userLocation', null);
+
+    const {
+        handleChange,
+        handleSubmit,
+        values,
+        errors,
+        resetForm
+    } = useForm({ name: '', latitude: '', longitude: '' }, validate);
+
+    useEffect(() => {
+        if (savedLocation) {
+            setUserLocation(savedLocation);
+        } else {
+            handleGetUserLocation();
+        }
+    }, []);
 
     useEffect(() => {
         if (userLocation) {
@@ -21,6 +37,8 @@ function App() {
                 },
                 ...locations,
             ]);
+            setTitle(`Your location is: ${userLocation.latitude}, ${userLocation.longitude}`);
+            setSavedLocation(userLocation);
         }
     }, [userLocation]);
 
@@ -30,61 +48,70 @@ function App() {
             .catch((error) => console.error("Error obtaining location:", error));
     };
 
-    const handleInputChange = (e) => {
-        setNewLocation({ ...newLocation, [e.target.name]: e.target.value });
-    };
-
-    const handleAddLocation = (e) => {
-        e.preventDefault();
-        const { name, latitude, longitude } = newLocation;
-        if (name && latitude && longitude) {
+    const handleAddLocation = () => {
+        if (Object.keys(errors).length === 0 && values.name && values.latitude && values.longitude) {
             setLocations([
                 ...locations,
                 {
-                    name: name,
-                    latitude: parseFloat(latitude),
-                    longitude: parseFloat(longitude),
+                    name: values.name,
+                    latitude: parseFloat(values.latitude),
+                    longitude: parseFloat(values.longitude),
                 },
             ]);
-            setNewLocation({ name: '', latitude: '', longitude: '' });
+            resetForm();
         }
     };
 
     return (
-        <div>
-            <h1>Location Map</h1>
-            <button onClick={handleGetUserLocation}>Get My Location</button>
+        <div style={{ display: 'flex' }}>
+            <div>
+                <h1>{title}</h1>
+                <button onClick={handleGetUserLocation}>Get My Location</button>
 
-            <form onSubmit={handleAddLocation}>
-                <input
-                    type="text"
-                    name="name"
-                    placeholder="Name"
-                    value={newLocation.name}
-                    onChange={handleInputChange}
-                />
-                <input
-                    type="number"
-                    name="latitude"
-                    placeholder="Latitude"
-                    value={newLocation.latitude}
-                    onChange={handleInputChange}
-                />
-                <input
-                    type="number"
-                    name="longitude"
-                    placeholder="Longitude"
-                    value={newLocation.longitude}
-                    onChange={handleInputChange}
-                />
-                <button type="submit">Add Location</button>
-            </form>
+                <form onSubmit={(e) => { handleSubmit(e); handleAddLocation(); }}>
+                    <input
+                        type="text"
+                        name="name"
+                        placeholder="Name"
+                        value={values.name}
+                        onChange={handleChange}
+                    />
+                    {errors.name && <p>{errors.name}</p>}
+                    <input
+                        type="number"
+                        name="latitude"
+                        placeholder="Latitude"
+                        value={values.latitude}
+                        onChange={handleChange}
+                    />
+                    {errors.latitude && <p>{errors.latitude}</p>}
+                    <input
+                        type="number"
+                        name="longitude"
+                        placeholder="Longitude"
+                        value={values.longitude}
+                        onChange={handleChange}
+                    />
+                    {errors.longitude && <p>{errors.longitude}</p>}
+                    <button type="submit">Add Location</button>
+                </form>
 
-            {locations.length > 0 ? (
-                <Map locations={locations} />
-            ) : (
-                <p>No locations to display.</p>
-            )}
+                <h2>Location List</h2>
+                <ul>
+                    {locations.map((location, index) => (
+                        <li key={index}>
+                            {location.name} - {location.latitude}, {location.longitude}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+            <div style={{ width: '70%', height: '500px' }}>
+                {locations.length > 0 ? (
+                    <Map locations={locations} />
+                ) : (
+                    <p>No locations to display.</p>
+                )}
+            </div>
         </div>
     );
 }
