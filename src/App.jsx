@@ -4,6 +4,7 @@ import { getUserLocation } from './services/geolocation';
 import useLocalStorage from './hooks/useLocalStorage';
 import useForm from './hooks/useForm';
 import validate from './hooks/validate';
+import useDocumentTitle from './hooks/useDocumentTitle'; // Importa el hook
 
 function App() {
     const [locations, setLocations] = useState([]);
@@ -18,6 +19,8 @@ function App() {
         errors,
         resetForm
     } = useForm({ name: '', latitude: '', longitude: '' }, validate);
+
+    useDocumentTitle(title); // Usa el hook para actualizar el título
 
     useEffect(() => {
         if (savedLocation) {
