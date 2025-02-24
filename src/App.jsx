@@ -4,7 +4,9 @@ import { getUserLocation } from './services/geolocation';
 import useLocalStorage from './hooks/useLocalStorage';
 import useForm from './hooks/useForm';
 import validate from './hooks/validate';
-import useDocumentTitle from './hooks/useDocumentTitle'; // Importa el hook
+import useDocumentTitle from './hooks/useDocumentTitle';
+import useClipboard from './hooks/useClipboard';
+import useQueryParameters from './hooks/useQueryParameters'; 
 
 function App() {
     const [locations, setLocations] = useState([]);
@@ -20,15 +22,28 @@ function App() {
         resetForm
     } = useForm({ name: '', latitude: '', longitude: '' }, validate);
 
-    useDocumentTitle(title); // Usa el hook para actualizar el título
+    useDocumentTitle(title);
+
+    const { copyToClipboard, generateShareUrl, isCopied } = useClipboard();
+    const { queryParams, setQueryParams } = useQueryParameters();
 
     useEffect(() => {
         if (savedLocation) {
             setUserLocation(savedLocation);
+        } else if (queryParams.lat && queryParams.lng) {
+            const { lat, lng } = queryParams;
+            const parsedLat = parseFloat(lat);
+            const parsedLng = parseFloat(lng);
+
+            if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+                setUserLocation({ latitude: parsedLat, longitude: parsedLng });
+            } else {
+                handleGetUserLocation();
+            }
         } else {
             handleGetUserLocation();
         }
-    }, []);
+    }, [queryParams]);
 
     useEffect(() => {
         if (userLocation) {
@@ -65,11 +80,23 @@ function App() {
         }
     };
 
+    const handleShareLocation = () => {
+        if (userLocation) {
+            const shareUrl = generateShareUrl(userLocation.latitude, userLocation.longitude);
+            copyToClipboard(shareUrl);
+        }
+    };
+
     return (
         <div style={{ display: 'flex' }}>
             <div>
                 <h1>{title}</h1>
                 <button onClick={handleGetUserLocation}>Get My Location</button>
+                {userLocation && (
+                    <button onClick={handleShareLocation}>
+                        {isCopied ? 'Copied!' : 'Share My Location'}
+                    </button>
+                )}
 
                 <form onSubmit={(e) => { handleSubmit(e); handleAddLocation(); }}>
                     <input
